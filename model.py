@@ -42,8 +42,9 @@ def build_head(in_features: int, num_classes: int = NUM_CLASSES) -> nn.Sequentia
 class APTOSModel(nn.Module):
     """
     timm backbone (num_classes=0, global_pool='avg') + custom classification head.
-    backbone.num_features gives the pooled feature dimensionality automatically,
-    so no hard-coded in_features per model.
+    The pooled feature dimensionality is measured from a dummy forward pass, since
+    timm's `num_features` can disagree with the real output for some backbones
+    (e.g. VGG-16 reports 512 but outputs 4096) — no hard-coded in_features per model.
     """
 
     def __init__(self, model_name: str, pretrained: bool = True,
@@ -53,7 +54,13 @@ class APTOSModel(nn.Module):
         self.backbone = timm.create_model(
             timm_name, pretrained=pretrained, num_classes=0, global_pool="avg"
         )
-        in_features = self.backbone.num_features
+        # Measure the real pooled-feature dim from a dummy forward. timm's
+        # `num_features` can disagree with the actual output (e.g. VGG-16 reports
+        # 512 but outputs 4096), which would build a mismatched head.
+        self.backbone.eval()
+        with torch.no_grad():
+            in_features = self.backbone(torch.zeros(1, 3, IMG_SIZE, IMG_SIZE)).shape[1]
+        self.backbone.train()
         self.classifier = build_head(in_features, num_classes)
         self.model_name = model_name
 
@@ -97,7 +104,7 @@ def save_model_summary(output_path: str = None, img_size: int = IMG_SIZE) -> Non
         model.eval()
         total, trainable = _count_parameters(model)
         flops_str = _estimate_flops(model, img_size)
-        in_feats  = model.backbone.num_features
+        in_feats  = model.classifier[1].in_features
         lines += [
             f"Model          : {model_name}",
             f"  Backbone     : {MODEL_REGISTRY[model_name]}",

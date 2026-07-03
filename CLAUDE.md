@@ -84,7 +84,7 @@ Runs tasks 1–9 in sequence. Each task maps to one module:
 
 ### Key design decisions
 
-- **`APTOSModel` (model.py):** timm backbone (`num_classes=0, global_pool='avg'`) + shared classifier head `Dropout(0.3) → Linear(→512) → ReLU → Dropout(0.2) → Linear(→5)`. In-features are detected at runtime via `backbone.num_features` — no per-model hard-coding.
+- **`APTOSModel` (model.py):** timm backbone (`num_classes=0, global_pool='avg'`) + shared classifier head `Dropout(0.3) → Linear(→512) → ReLU → Dropout(0.2) → Linear(→5)`. In-features are detected at runtime via a **dummy forward pass** (timm's `backbone.num_features` is unreliable for VGG-16 — reports 512 but the backbone outputs 4096), so no per-model hard-coding.
 - **`MODEL_REGISTRY` (model.py):** maps the four short keys (`efficientnet_b0`, `resnet50`, `vgg16`, `inceptionv3`) to timm identifiers. Use these exact keys everywhere (`--models`, `--checkpoints`, etc.).
 - **Class imbalance:** Inverse-frequency class weights (normalised to sum to `num_classes`) passed to `CrossEntropyLoss`.
 - **Training config (`train.py`):** All hyperparameters live in the `TRAIN_CONFIG` dict — `lr=1e-4`, `weight_decay=1e-4`, `max_epochs=30`, `patience=7`, `batch_size=32`. Edit that dict to change them.
