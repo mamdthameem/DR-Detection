@@ -15,7 +15,7 @@ import argparse
 
 # ── Paths & constants ──────────────────────────────────────────────────────────
 PREPROCESSED_PATH = "/kaggle/working/data/aptos_preprocessed"
-DATASET_CSV       = "/kaggle/input/aptos2019-blindness-detection/train.csv"
+from paths import DATASET_CSV   # APTOS path auto-resolved (see paths.py)
 IMAGENET_MEAN     = [0.485, 0.456, 0.406]
 IMAGENET_STD      = [0.229, 0.224, 0.225]
 IMG_SIZE          = 224

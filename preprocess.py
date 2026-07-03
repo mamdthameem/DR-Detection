@@ -14,7 +14,7 @@ from tqdm import tqdm
 import argparse
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-DATASET_PATH      = "/kaggle/input/aptos2019-blindness-detection"
+from paths import DATASET_ROOT as DATASET_PATH   # APTOS path auto-resolved (see paths.py)
 PREPROCESSED_PATH = "/kaggle/working/data/aptos_preprocessed"
 OUTPUTS_DIR       = "/kaggle/working/outputs"
 IMG_SIZE          = 224

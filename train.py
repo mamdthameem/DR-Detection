@@ -21,7 +21,7 @@ from dataset import get_dataloaders
 CHECKPOINTS_DIR   = "/kaggle/working/checkpoints"
 OUTPUTS_DIR       = "/kaggle/working/outputs"
 PREPROCESSED_PATH = "/kaggle/working/data/aptos_preprocessed"
-DATASET_CSV       = "/kaggle/input/aptos2019-blindness-detection/train.csv"
+from paths import DATASET_CSV   # APTOS path auto-resolved (see paths.py)
 
 # ── Hyperparameters (no magic numbers elsewhere) ───────────────────────────────
 TRAIN_CONFIG = {

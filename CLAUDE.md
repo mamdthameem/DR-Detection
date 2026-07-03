@@ -96,4 +96,4 @@ Runs tasks 1–9 in sequence. Each task maps to one module:
 
 ### Environment note
 
-All file paths are hardcoded for Kaggle. To run locally, search for `/kaggle/` in each file and replace with your local paths. There is no config file abstraction — paths are scattered across modules.
+Working-directory paths (`/kaggle/working/...` for checkpoints, outputs, preprocessed images) are hardcoded per-module. The **dataset input path is the exception**: `paths.py` resolves it at import time — every script does `from paths import DATASET_CSV` / `DATASET_ROOT` instead of hardcoding `/kaggle/input/...`. `paths.py` probes both `/kaggle/input/aptos2019-blindness-detection` and `/kaggle/input/competitions/aptos2019-blindness-detection` (Kaggle mounts competition data at either, depending on how it's attached), then falls back to a recursive search. To run locally, add your own path to the `_CANDIDATES` list in `paths.py` and replace the `/kaggle/working/` constants in each module.

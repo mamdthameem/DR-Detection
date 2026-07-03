@@ -27,7 +27,7 @@ from dataset import get_splits, get_transforms, APTOSDataset
 CHECKPOINTS_DIR   = "/kaggle/working/checkpoints"
 OUTPUTS_DIR       = "/kaggle/working/outputs"
 PREPROCESSED_PATH = "/kaggle/working/data/aptos_preprocessed"
-DATASET_CSV       = "/kaggle/input/aptos2019-blindness-detection/train.csv"
+from paths import DATASET_CSV   # APTOS path auto-resolved (see paths.py)
 
 NUM_CLASSES = 5
 CLASS_NAMES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
