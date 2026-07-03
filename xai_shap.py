@@ -121,7 +121,14 @@ def main():
     print("  Running GradientExplainer (may take several minutes) ...")
     explainer  = shap.GradientExplainer(model, background)
     shap_vals  = explainer.shap_values(test_batch)
-    # shap_vals: list of NUM_CLASSES arrays, each shape (5, 3, 224, 224)
+
+    # SHAP's output layout differs across library versions:
+    #   older: list of C arrays, each (N, 3, 224, 224)   -> shap_vals[cls][sample]
+    #   newer: single ndarray (N, 3, 224, 224, C)         -> shap_vals[sample, ..., cls]
+    def shap_for(sample_idx: int, cls: int) -> np.ndarray:
+        if isinstance(shap_vals, list):
+            return np.asarray(shap_vals[cls][sample_idx])
+        return np.asarray(shap_vals)[sample_idx, ..., cls]
 
     # ── Build figure ──
     fig, axes = plt.subplots(NUM_CLASSES, 2, figsize=(8, 4 * NUM_CLASSES))
@@ -134,7 +141,7 @@ def main():
         orig_rgb = denormalize(orig_np)           # (224, 224, 3) float [0,1]
 
         # SHAP values for predicted class, summed over channels
-        sv_chw   = shap_vals[pred_cls][i]         # (3, 224, 224)
+        sv_chw   = shap_for(i, pred_cls)          # (3, 224, 224)
         heatmap  = shap_to_heatmap(sv_chw)        # (224, 224)
         vmax     = max(abs(heatmap.min()), abs(heatmap.max())) + 1e-8
 
