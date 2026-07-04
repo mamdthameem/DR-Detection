@@ -87,10 +87,10 @@ def _estimate_flops(model: nn.Module, img_size: int = IMG_SIZE, device: str = "c
         from thop import profile, clever_format
         dummy = torch.randn(1, 3, img_size, img_size).to(device)
         macs, _ = profile(model, inputs=(dummy,), verbose=False)
-        flops_str, _ = clever_format([macs * 2], "%.3f")
+        flops_str = clever_format(macs * 2, "%.3f")   # scalar -> single string
         return flops_str
-    except Exception:
-        return "N/A (install thop)"
+    except Exception as exc:
+        return f"N/A ({type(exc).__name__}: {exc})"
 
 
 def save_model_summary(output_path: str = None, img_size: int = IMG_SIZE) -> None:
