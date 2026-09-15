@@ -33,6 +33,7 @@ import argparse
 
 from paths import DATASET_ROOT, DATASET_CSV          # auto-resolved APTOS location
 from dataset import get_splits, get_class_weights     # reuse identical splits + weights
+from experiment_config import SPLIT_SEED
 
 # ── Paths & constants ──────────────────────────────────────────────────────────
 RAW_IMG_DIR   = os.path.join(DATASET_ROOT, "train_images")   # raw fundus images
@@ -146,7 +147,9 @@ def get_dataloaders(img_dir: str     = RAW_IMG_DIR,
                     csv_path: str     = DATASET_CSV,
                     batch_size: int   = 32,
                     num_workers: int  = 4,
-                    seed: int         = 42):
+                    seed: int         = SPLIT_SEED,
+                    worker_init_fn    = None,
+                    generator         = None):
     """Returns (train_loader, val_loader, test_loader, class_weights,
                 (train_df, val_df, test_df)) — same shape as dataset.get_dataloaders."""
     train_df, val_df, test_df = get_splits(csv_path, seed=seed)   # identical splits
@@ -155,7 +158,8 @@ def get_dataloaders(img_dir: str     = RAW_IMG_DIR,
     val_ds   = APTOSDataset(val_df,   img_dir, get_transforms(False))
     test_ds  = APTOSDataset(test_df,  img_dir, get_transforms(False))
 
-    loader_kwargs = dict(num_workers=num_workers, pin_memory=True)
+    loader_kwargs = dict(num_workers=num_workers, pin_memory=True,
+                         worker_init_fn=worker_init_fn, generator=generator)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **loader_kwargs)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, **loader_kwargs)
     test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **loader_kwargs)

@@ -39,10 +39,10 @@ CLASS_NAMES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
 # ── Inference ──────────────────────────────────────────────────────────────────
 
 @torch.no_grad()
-def run_inference(model, loader, device):
-    """Returns (true_labels, predicted_labels, softmax_probs)."""
+def run_inference_full(model, loader, device):
+    """Returns (true_labels, predicted_labels, softmax_probs, logits)."""
     model.eval()
-    all_labels, all_preds, all_probs = [], [], []
+    all_labels, all_preds, all_probs, all_logits = [], [], [], []
     for imgs, labels in tqdm(loader, desc="  Inference", leave=False):
         imgs   = imgs.to(device)
         logits = model(imgs)
@@ -50,7 +50,15 @@ def run_inference(model, loader, device):
         all_labels.extend(labels.cpu().numpy())
         all_preds.extend(logits.argmax(1).cpu().numpy())
         all_probs.extend(probs.cpu().numpy())
-    return np.array(all_labels), np.array(all_preds), np.array(all_probs)
+        all_logits.extend(logits.cpu().numpy())
+    return (np.array(all_labels), np.array(all_preds),
+            np.array(all_probs), np.array(all_logits))
+
+
+def run_inference(model, loader, device):
+    """Returns (true_labels, predicted_labels, softmax_probs)."""
+    labels, preds, probs, _ = run_inference_full(model, loader, device)
+    return labels, preds, probs
 
 
 # ── Metrics ────────────────────────────────────────────────────────────────────

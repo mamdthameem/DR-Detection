@@ -16,6 +16,7 @@ import argparse
 # ── Paths & constants ──────────────────────────────────────────────────────────
 PREPROCESSED_PATH = "/kaggle/working/data/aptos_preprocessed"
 from paths import DATASET_CSV   # APTOS path auto-resolved (see paths.py)
+from experiment_config import SPLIT_SEED   # fixed split seed; never varies with train_seed
 IMAGENET_MEAN     = [0.485, 0.456, 0.406]
 IMAGENET_STD      = [0.229, 0.224, 0.225]
 IMG_SIZE          = 224
@@ -73,7 +74,7 @@ def get_transforms(is_train: bool = True, img_size: int = IMG_SIZE):
 def get_splits(csv_path: str = DATASET_CSV,
                train_ratio: float = TRAIN_RATIO,
                val_ratio: float = VAL_RATIO,
-               seed: int = 42):
+               seed: int = SPLIT_SEED):
     """Stratified train / val / test split."""
     df = pd.read_csv(csv_path)
     test_size = round(1.0 - train_ratio - val_ratio, 10)
@@ -109,10 +110,14 @@ def get_dataloaders(img_dir: str      = PREPROCESSED_PATH,
                     batch_size: int   = 32,
                     num_workers: int  = 2,
                     img_size: int     = IMG_SIZE,
-                    seed: int         = 42):
+                    seed: int         = SPLIT_SEED,
+                    worker_init_fn    = None,
+                    generator         = None):
     """
     Returns (train_loader, val_loader, test_loader, class_weights,
              (train_df, val_df, test_df)).
+    `seed` is the split seed. worker_init_fn / generator default to None, which is
+    exactly the DataLoader behaviour the original runs used.
     """
     train_df, val_df, test_df = get_splits(csv_path, seed=seed)
 
@@ -120,7 +125,8 @@ def get_dataloaders(img_dir: str      = PREPROCESSED_PATH,
     val_ds   = APTOSDataset(val_df,   img_dir, get_transforms(False, img_size))
     test_ds  = APTOSDataset(test_df,  img_dir, get_transforms(False, img_size))
 
-    loader_kwargs = dict(num_workers=num_workers, pin_memory=True)
+    loader_kwargs = dict(num_workers=num_workers, pin_memory=True,
+                         worker_init_fn=worker_init_fn, generator=generator)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **loader_kwargs)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, **loader_kwargs)
     test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **loader_kwargs)
