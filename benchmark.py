@@ -54,9 +54,10 @@ CONVENTIONS = {
             "contribute neither operations nor parameters (listed per model). "
             "flops_derived_as_2x_macs = 2 * macs, a convention, not a separate measurement.",
     "torch_flop_counter": "torch.utils.flop_counter.FlopCounterMode, forward pass, batch size 1, "
-                          "3x224x224. Counts convolution and matrix-multiplication operators as "
-                          "multiply-adds (a matmul as m*n*p, no factor 2, no bias additions); "
-                          "normalisation, activations, pooling and element-wise ops are not counted.",
+                          "3x224x224. PyTorch's formulas count convolution and matrix "
+                          "multiplication as 2 x the number of multiplications, i.e. FLOPs under "
+                          "the FLOPs = 2 x MACs convention; bias additions, normalisation, "
+                          "activations, pooling and element-wise ops are not counted.",
     "latency": "batch size 1, float32, torch.no_grad, eval mode; model and input already on the "
                "device; warmup passes discarded; torch.cuda.synchronize() before and after each "
                "timed GPU pass; time.perf_counter; milliseconds per image.",

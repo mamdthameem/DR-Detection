@@ -141,6 +141,10 @@ one stopped.
    python run_suite.py --resume-from auto
    python analyze.py
    ```
+   If Session 1 was run interactively instead of with *Save & Run All*, there is no saved
+   output to attach. Skip step 2 and put `python environment_info.py --probe` on the line
+   before `python run_suite.py`. The suite then reruns b0_baseline seed 42 first (about
+   3 minutes) and checks it against the original again before continuing.
 4. **Save Version** → **Save & Run All (Commit)**.
 5. Repeat steps 1–4 until the log says `Suite status: 25/25 run(s) complete`.
 
@@ -160,7 +164,58 @@ What happens in each session:
 
 ---
 
-## 4. Where the outputs are (`/kaggle/working`)
+## 4. Matched-augmentation control: b0_clahe_matched (5 short runs)
+
+b0_clahe's LAB-CLAHE images, fed through b0_baseline's exact data pipeline (same augmentation,
+same order, 2 workers). The images are first written once to a PNG cache, so training is as
+fast as b0_baseline.
+
+**On your computer**, push the new code:
+```
+cd D:\dr_detection
+git add -A
+git commit -m "Add b0_clahe_matched: LAB-CLAHE images through the b0_baseline pipeline"
+git push
+```
+
+**On Kaggle:**
+
+1. Open the notebook → **Edit**. Settings unchanged: GPU T4 x2, *Pin to original
+   environment*, Internet On.
+2. **Input panel:** remove the attached notebook output, then **Add Input** → **Your Work** →
+   **Notebooks** → the same notebook again. This attaches the newest version, the one that
+   contains all 25 finished runs.
+3. Keep Cell 1 (git clone). Delete the other cells and add this one:
+   ```
+   %%bash
+   set -e
+   cd /kaggle/working/DR-Detection
+   python run_suite.py --resume-from auto --repro-only
+   test "$(ls -d /kaggle/working/runs/*__seed* | wc -l)" -ge 25 || { echo "STOP: fewer than 25 finished runs copied; attach the newest notebook version"; exit 1; }
+   python preprocess_effnet.py --skip-visualize
+   python run_suite.py --configs b0_clahe_matched
+   python analyze.py
+   ```
+   What each line does:
+   - copies the 25 finished runs from the attached output and re-checks seed 42 (no training);
+   - stops the session if the attached output was an older version;
+   - builds the LAB-CLAHE PNG cache in `/kaggle/working/data/aptos_lab` (the longest step,
+     single CPU process);
+   - trains b0_clahe_matched for the 5 seeds; every run first checks that all 3,662 cached
+     images exist and that 20 test images are pixel-identical to on-the-fly preprocessing;
+   - re-runs the analysis over all 30 runs.
+4. **Save Version** → **Save & Run All (Commit)**.
+5. In the log, check for `LAB-CLAHE cache OK: 3662 images present; 20 test images
+   pixel-identical to on-the-fly preprocessing` and `Suite status: 5/5 run(s) complete`.
+6. From the version's Output, send me:
+   - `analysis/findings_numbers.md`
+   - `analysis/paired_b0_baseline_vs_b0_clahe_matched_summary.csv`
+   - `analysis/paired_b0_clahe_vs_b0_clahe_matched_summary.csv`
+   - `analysis/per_run/b0_clahe__seed42/confusion_matrix.csv` (still missing from last time)
+
+---
+
+## 5. Where the outputs are (`/kaggle/working`)
 
 | path | contents |
 |---|---|

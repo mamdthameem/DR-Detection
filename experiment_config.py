@@ -30,12 +30,17 @@ CLASS_NAMES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
 # num_workers is part of the augmentation RNG path (every DataLoader worker has its own
 # seed), so each configuration keeps the value its original run used: 2 in train.py,
 # 4 in train_effnet.py.
-CONFIG_ORDER = ["b0_baseline", "b0_clahe", "resnet50", "vgg16", "inceptionv3"]
+# b0_clahe_matched (added for the revision) feeds b0_clahe's LAB-CLAHE images through
+# b0_baseline's data pipeline (dataset.py transforms, 2 workers), so preprocessing is the
+# only difference from b0_baseline.
+CONFIG_ORDER = ["b0_baseline", "b0_clahe", "b0_clahe_matched", "resnet50", "vgg16", "inceptionv3"]
 CONFIGS = {
     "b0_baseline": {"model_name": "efficientnet_b0", "preprocessing": "baseline",
                     "num_workers": 2, "original_script": "train.py"},
     "b0_clahe":    {"model_name": "efficientnet_b0", "preprocessing": "lab_clahe",
                     "num_workers": 4, "original_script": "train_effnet.py"},
+    "b0_clahe_matched": {"model_name": "efficientnet_b0", "preprocessing": "lab_clahe_cache",
+                         "num_workers": 2, "original_script": None},
     "resnet50":    {"model_name": "resnet50",        "preprocessing": "baseline",
                     "num_workers": 2, "original_script": "train.py"},
     "vgg16":       {"model_name": "vgg16",           "preprocessing": "baseline",
@@ -50,6 +55,10 @@ PREPROCESSING = {
     "lab_clahe": "preprocess_effnet.py: black-border crop -> CLAHE (clip 2.0, 8x8 tiles) on "
                  "the LAB L-channel -> resize 224x224 (INTER_AREA), applied on the fly to raw "
                  "images; train augmentation from preprocess_effnet.get_transforms",
+    "lab_clahe_cache": "preprocess_effnet.preprocess_image (black-border crop -> CLAHE (clip 2.0, "
+                       "8x8 tiles) on the LAB L-channel -> resize 224x224 (INTER_AREA)), written "
+                       "once to PNG by `python preprocess_effnet.py --skip-visualize` and read by "
+                       "dataset.py; train augmentation from dataset.get_transforms, as b0_baseline",
 }
 
 # The run whose result must match the original before anything else starts.

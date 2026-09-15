@@ -50,8 +50,11 @@ from experiment_config import (RUNS_ROOT, ANALYSIS_DIR, CONFIG_ORDER, NUM_CLASSE
 BOOTSTRAP_RESAMPLES = 10_000
 BOOTSTRAP_SEED      = 12345
 BOOTSTRAP_CHUNK     = 500
-PAIRS               = [("b0_baseline", "b0_clahe"), ("b0_baseline", "resnet50")]
-THRESHOLD_CONFIGS   = ["b0_baseline", "b0_clahe"]
+PAIRS               = [("b0_baseline", "b0_clahe"), ("b0_baseline", "resnet50"),
+                       ("b0_baseline", "b0_clahe_matched"), ("b0_clahe", "b0_clahe_matched")]
+THRESHOLD_CONFIGS   = ["b0_baseline", "b0_clahe", "b0_clahe_matched"]
+# The QWK ranking compares the five configurations of the original study only.
+RANKING_CONFIGS     = ["b0_baseline", "b0_clahe", "resnet50", "vgg16", "inceptionv3"]
 TARGET_GRADE        = 4
 RECALL_TARGETS      = [0.70, 0.80, 0.90]
 
@@ -386,7 +389,8 @@ def paired_comparison(summary_all: pd.DataFrame, a: str, b: str):
 
 
 def qwk_ranking(summary_all: pd.DataFrame):
-    pivot = summary_all.pivot(index="seed", columns="config", values="kappa_quadratic_weighted")
+    ranked = summary_all[summary_all["config"].isin(RANKING_CONFIGS)]
+    pivot = ranked.pivot(index="seed", columns="config", values="kappa_quadratic_weighted")
     configs = ordered_configs(pivot.columns)
     pivot = pivot[configs]
     complete = pivot.dropna()
@@ -419,7 +423,7 @@ def qwk_ranking(summary_all: pd.DataFrame):
     stability = {
         "metric": "kappa_quadratic_weighted on the test set",
         "configs_ranked": configs,
-        "configs_not_yet_available": [c for c in CONFIG_ORDER if c not in configs],
+        "configs_not_yet_available": [c for c in RANKING_CONFIGS if c not in configs],
         "seeds_ranked": [int(s) for s in complete.index],
         "seeds_excluded_missing_configs": [int(s) for s in pivot.index if s not in complete.index],
         "ordering_per_seed": orderings,
@@ -597,7 +601,7 @@ def findings_markdown(args, runs, warnings, summary_all, paired, stability) -> s
                 f"{'yes' if r['seed_ranges_overlap'] else 'no'} | "
                 f"{'n/a' if r['exceeds_seed_variance'] is None else ('yes' if r['exceeds_seed_variance'] else 'no')} |")
 
-    lines += ["", f"## {section}. Per-seed QWK ranking of all configurations", ""]
+    lines += ["", f"## {section}. Per-seed QWK ranking of the five original configurations", ""]
     if stability["configs_not_yet_available"]:
         lines.append(f"Not yet available: {', '.join(stability['configs_not_yet_available'])}.")
     lines += ["| seed | ordering by test QWK (highest first) |", "|---|---|"]
@@ -770,7 +774,7 @@ def main(argv=None) -> int:
     print("\nKappa per configuration (test set, mean ± SD over seeds)")
     for c in ordered_configs(summary_all["config"]):
         g = summary_all[summary_all["config"] == c]
-        print(f"  {c:<12} n={len(g)}  unweighted {_pm(g['kappa_unweighted'].mean(), g['kappa_unweighted'].std(ddof=1))}"
+        print(f"  {c:<16} n={len(g)}  unweighted {_pm(g['kappa_unweighted'].mean(), g['kappa_unweighted'].std(ddof=1))}"
               f"  QWK {_pm(g['kappa_quadratic_weighted'].mean(), g['kappa_quadratic_weighted'].std(ddof=1))}")
     print(f"QWK ordering identical across ranked seeds {stability['seeds_ranked']}: "
           f"{stability['identical_ordering_across_seeds']}")

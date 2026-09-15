@@ -7,7 +7,9 @@ Resumable multi-seed suite. Every run executes run_experiment.py in its own proc
     python run_suite.py --resume-from auto   # first copy finished runs from a previous notebook
                                              # version attached under /kaggle/input
 
-Order: all seeds of b0_baseline, then b0_clahe, resnet50, vgg16, inceptionv3. A run whose
+Order: all seeds of each configuration in CONFIG_ORDER (b0_baseline, b0_clahe,
+b0_clahe_matched, resnet50, vgg16, inceptionv3). b0_clahe_matched needs the LAB-CLAHE cache
+(python preprocess_effnet.py --skip-visualize). A run whose
 directory already holds metrics.json is skipped, so the command can be re-run until
 everything is complete; an unfinished run restarts from scratch. No run other than
 b0_baseline seed 42 starts until that run reproduces the original numbers exactly
@@ -86,7 +88,7 @@ def run_one(config_name: str, seed: int, runs_root: str, args, max_epochs=None) 
     if max_epochs is not None:
         cmd += ["--max-epochs", str(max_epochs)]
     for flag, value in (("--img-dir", args.img_dir), ("--raw-dir", args.raw_dir),
-                        ("--csv-path", args.csv_path)):
+                        ("--lab-dir", args.lab_dir), ("--csv-path", args.csv_path)):
         if value:
             cmd += [flag, value]
     if args.cudnn_deterministic:
@@ -240,6 +242,7 @@ def main() -> int:
     ap.add_argument("--smoke-epochs", type=int, default=2)
     ap.add_argument("--img-dir",  help="Passed to run_experiment.py")
     ap.add_argument("--raw-dir",  help="Passed to run_experiment.py")
+    ap.add_argument("--lab-dir",  help="Passed to run_experiment.py")
     ap.add_argument("--csv-path", help="Passed to run_experiment.py")
     ap.add_argument("--cudnn-deterministic", action="store_true", help="Passed to run_experiment.py")
     ap.add_argument("--seeded-generator",    action="store_true", help="Passed to run_experiment.py")

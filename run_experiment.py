@@ -77,13 +77,41 @@ def get_transform_module(config: dict):
     return preprocess_effnet if config["preprocessing"] == "lab_clahe" else dataset
 
 
+def images_for(config: dict, args) -> str:
+    return {"baseline":        args.img_dir,
+            "lab_clahe":       args.raw_dir,
+            "lab_clahe_cache": args.lab_dir}[config["preprocessing"]]
+
+
 def build_loaders(config: dict, args, generator):
     common = dict(csv_path=args.csv_path, batch_size=TRAIN_CONFIG["batch_size"],
                   num_workers=config["num_workers"], seed=SPLIT_SEED,
                   worker_init_fn=seed_worker, generator=generator)
     if config["preprocessing"] == "lab_clahe":
         return preprocess_effnet.get_dataloaders(img_dir=args.raw_dir, **common)
-    return dataset.get_dataloaders(img_dir=args.img_dir, **common)
+    return dataset.get_dataloaders(img_dir=images_for(config, args), **common)
+
+
+def check_lab_cache(lab_dir: str, raw_dir: str, splits, n_compare: int = 20) -> dict:
+    """Every image must be in the LAB-CLAHE cache, with the pixels of on-the-fly preprocessing."""
+    from PIL import Image
+    ids = [id_code for df in splits for id_code in df["id_code"]]
+    missing = [i for i in ids if not os.path.exists(os.path.join(lab_dir, i + ".png"))]
+    if missing:
+        raise RuntimeError(f"{len(missing)} of {len(ids)} images missing from {lab_dir} "
+                           f"(e.g. {missing[:3]}). Build the cache first: "
+                           "python preprocess_effnet.py --skip-visualize")
+    compared = list(splits[2]["id_code"][:n_compare])
+    for id_code in compared:
+        cached = np.array(Image.open(os.path.join(lab_dir, id_code + ".png")).convert("RGB"))
+        fresh = preprocess_effnet.preprocess_image(preprocess_effnet._read_raw(raw_dir, id_code))
+        if not np.array_equal(cached, fresh):
+            raise RuntimeError(f"{lab_dir}/{id_code}.png differs from on-the-fly LAB-CLAHE "
+                               "preprocessing of the raw image; rebuild the cache")
+    print(f"LAB-CLAHE cache OK: {len(ids)} images present; {len(compared)} test images "
+          "pixel-identical to on-the-fly preprocessing")
+    return {"cache_dir": lab_dir, "images_present": len(ids),
+            "test_images_pixel_identical_to_on_the_fly": len(compared)}
 
 
 def _ids_sha256(df) -> str:
@@ -109,6 +137,8 @@ def main(argv=None) -> int:
                     help="Baseline preprocessed PNGs (preprocess.py output)")
     ap.add_argument("--raw-dir",    default=preprocess_effnet.RAW_IMG_DIR,
                     help="Raw APTOS train_images (b0_clahe preprocesses on the fly)")
+    ap.add_argument("--lab-dir",    default=preprocess_effnet.LAB_CACHE,
+                    help="LAB-CLAHE PNG cache (b0_clahe_matched)")
     ap.add_argument("--csv-path",   default=DATASET_CSV)
     ap.add_argument("--cudnn-deterministic", action="store_true",
                     help="Deterministic cuDNN kernels (originals: off)")
@@ -139,10 +169,14 @@ def main(argv=None) -> int:
     if not xai_valid:
         print(f"[WARN] XAI_SAMPLE_INDICES do not match their grades in this split: {xai_detail}")
 
+    cache_check = None
+    if config["preprocessing"] == "lab_clahe_cache":
+        cache_check = check_lab_cache(args.lab_dir, args.raw_dir, (train_df, val_df, test_df))
+
     hparams = {**TRAIN_CONFIG, "max_epochs": args.max_epochs,
                "num_workers": config["num_workers"]}
     transforms_module = get_transform_module(config)
-    image_dir = args.raw_dir if config["preprocessing"] == "lab_clahe" else args.img_dir
+    image_dir = images_for(config, args)
 
     write_json(os.path.join(run_dir, "config.json"), {
         "run_name":        name,
@@ -157,6 +191,7 @@ def main(argv=None) -> int:
             "variant":     config["preprocessing"],
             "description": PREPROCESSING[config["preprocessing"]],
             "image_dir":   image_dir,
+            **({"cache_check": cache_check} if cache_check else {}),
         },
         "hyperparameters": {
             **hparams,
